@@ -192,6 +192,7 @@ let power_user = {
     custom_stopping_strings: '',
     custom_stopping_strings_macro: true,
     fuzzy_search: false,
+    encode_tags: false,
 };
 
 let themes = [];
@@ -199,6 +200,7 @@ let movingUIPresets = [];
 let instruct_presets = [];
 
 const storage_keys = {
+    ui_language: "language",
     fast_ui_mode: "TavernAI_fast_ui_mode",
     avatar_style: "TavernAI_avatar_style",
     chat_display: "TavernAI_chat_display",
@@ -686,6 +688,7 @@ function loadPowerUserSettings(settings, data) {
     $("#custom_stopping_strings_macro").prop("checked", power_user.custom_stopping_strings_macro);
     $('#fuzzy_search_checkbox').prop("checked", power_user.fuzzy_search);
     $('#persona_show_notifications').prop("checked", power_user.persona_show_notifications);
+    $('#encode_tags').prop("checked", power_user.encode_tags);
 
     $("#console_log_prompts").prop("checked", power_user.console_log_prompts);
     $('#auto_fix_generated_markdown').prop("checked", power_user.auto_fix_generated_markdown);
@@ -1299,8 +1302,25 @@ function doResetPanels() {
     $("#movingUIreset").trigger('click');
 }
 
+function addLanguagesToDropdown() {
+    $.getJSON('i18n.json', function (data) {
+        if (!Array.isArray(data?.lang)) {
+            return;
+        }
 
+        for (const lang of data.lang) {
+            const option = document.createElement('option');
+            option.value = lang;
+            option.innerText = lang;
+            $('#ui_language_select').append(option);
+        }
 
+        const selectedLanguage = localStorage.getItem(storage_keys.ui_language);
+        if (selectedLanguage) {
+            $('#ui_language_select').val(selectedLanguage);
+        }
+    });
+}
 
 function setAvgBG() {
     const bgimg = new Image();
@@ -2032,6 +2052,29 @@ $(document).ready(() => {
         saveSettingsDebounced();
     });
 
+    $('#encode_tags').on('input', async function () {
+        power_user.encode_tags = !!$(this).prop('checked');
+        await reloadCurrentChat();
+        saveSettingsDebounced();
+    });
+
+    $('#lazy_load').on('input', function () {
+        power_user.lazy_load = Number($(this).val());
+        saveSettingsDebounced();
+    });
+
+    $('#ui_language_select').on('change', async function () {
+        const language = $(this).val();
+
+        if (language) {
+            localStorage.setItem(storage_keys.ui_language, language);
+        } else {
+            localStorage.removeItem(storage_keys.ui_language);
+        }
+
+        location.reload();
+    });
+
     $(window).on('focus', function () {
         browser_has_focus = true;
     });
@@ -2047,4 +2090,5 @@ $(document).ready(() => {
     registerSlashCommand('cut', doMesCut, [], ' <span class="monospace">(requred number)</span> – cuts the specified message from the chat', true, true);
     registerSlashCommand('resetpanels', doResetPanels, ['resetui'], ' – resets UI panels to original state.', true, true);
     registerSlashCommand('bgcol', setAvgBG, [], ' – WIP test of auto-bg avg coloring', true, true);
+    addLanguagesToDropdown();
 });
